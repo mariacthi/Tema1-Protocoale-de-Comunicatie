@@ -1,0 +1,61 @@
+// Tudor Maria-Elena 324CC
+
+Dataplane router
+
+In this project, I have implemented the forwarding process, an efficient LPM
+algorithm using binary search and the ICMP protocol.
+
+In the main function, I allocate the routing table and the static ARP table.
+Then, I check if the packet is destined for this router and if so check if
+it's an IP type (there should've been an ARP type as well but for this
+assignment I did not manage to make it work in time).
+
+In the forward_ipv4 function, I follow these steps:
+	1. check if the checksum is correct (recalculate it and compare
+	it with the old one)
+	2. check if the router is the destination (and send "echo reply")
+	3. verify TTL and send ICMP of type "Time exceeded" if necessary,
+	otherwise decrement TTL.
+	4. update checksum
+	5. check the routing table using binary search and send ICMP of type
+	"Destination unreachable" if necessary
+	6. search the MAC address of the next hop and send the packet
+
+For the forwarding process, the steps were the ones written in the assignment.
+The first part was pretty easy, the real problem was getting the MAC address of
+the next hop. I tried to use ARP requests for this part, but in the end they didn't
+work out and ruined the forwarding tests as well, so I just decided to use the
+static table and do a simple search through it to find the MAC address. Another
+challenge was figuring out/not forgetting to use htons/ntohs etc. I made the
+get_checksum_for_ipv4 and get_checksum_for_icmp functions especially for this
+reason as I kept forgetting which one to use or switched them up.
+
+The 2 ICMP functions: icmp_echo_reply and icmp_error_message are pretty similar.
+The icmp_echo_reply function just swaps the destination and source hosts, resets
+the TTL, updates the checksum and modifies the ICMP header with the correct
+type and code, then sends the packet.
+FOr the icmp_error_message function, the hardest part was understanding what the
+payload contains and what the length should be (the ICMP payload contains the
+original IP header + 64 bits of the original payload). As it is sent when an
+error occurs, I can't just swap the two addresses like before, so the sender
+address becomes the router's address as the packet could've have been intended
+to be sent somewhere else. The rest of the implementation is mainly the same:
+reset TTL, update checksum, update ICMP header and send the new packet.
+
+For the LPM algorithm, the hardest part was making the if-else statements
+(figuring out if it's host or network order), as the binary search part is
+implemented in a pretty basic way (either modify the left or the right index).
+One other thing I had to add to the original algorithm was to continue the loop
+until I found the longest match, as there could have been more matches but with
+different masks. I used qsort for the routing table entries by comparing the
+bitwise AND of the prefix and the mask, and when the values are equal, comparing
+the length of the masks.
+
+In conclusion, I have been defeated by the ARP protocol and I hope I will come
+back to finish it some other time, but overall I think this assignment helped me
+get a good grasp of how packets are sent and how the protocols are encapsulated
+in one another.
+
+Feedback: The checker really did not want to work for me, the only way I found
+to figure out if a test was working was to look in the host output (after a very
+long time) and also check Moodle (I probably uploaded dozens of archives there).
